@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cloud Resume Analyzer</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #a8edea, #fed6e3);
+      color: #333;
+    }
+
+    .main-heading {
+      font-size: 36px;
+      text-align: center;
+      margin: 40px 0 20px;
+      color: #4a148c;
+      font-weight: bold;
+    }
+
+    .container {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 40px;
+      padding: 30px;
+      flex-wrap: wrap;
+    }
+
+    .card, .result-box {
+      width: 480px;
+      background: #ffffff;
+      border-radius: 15px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      padding: 30px;
+      min-height: 300px;
+    }
+
+    .card h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #4a148c;
+    }
+
+    input[type="file"], select, button {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background-color: #6a1b9a;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background-color: #4a148c;
+    }
+
+    .result-box {
+      display: none;
+    }
+
+    .result-box h3 {
+      color: #2e7d32;
+    }
+
+    .score-bar {
+      width: 100%;
+      height: 24px;
+      border-radius: 12px;
+      background-color: #ddd;
+      margin: 10px 0;
+      overflow: hidden;
+    }
+
+    .score-fill {
+      height: 100%;
+      line-height: 24px;
+      color: white;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .score-fill.green { background-color: #4caf50; }
+    .score-fill.orange { background-color: #fbc02d; }
+    .score-fill.red { background-color: #f44336; }
+
+    .firework {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      animation: explode 1s ease-out forwards;
+      z-index: 9999;
+    }
+
+    @keyframes explode {
+      0% { transform: scale(0.5); opacity: 1; }
+      100% { transform: scale(2) translate(var(--x), var(--y)); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1 class="main-heading">💼 Upload Your Resume and Leave the Rest to Us...</h1>
+
+  <div class="container">
+    <div class="card">
+      <h2>🖥️ Resume Analyzer</h2>
+      <form id="resumeForm">
+        <input type="file" id="resume" name="resume" accept=".pdf" required />
+        <select id="job" name="job" required>
+          <option value="">Select Job Role</option>
+          <option value="frontend">Frontend Developer</option>
+          <option value="backend">Backend Developer</option>
+          <option value="data">Data Analyst</option>
+        </select>
+        <button type="submit">Submit</button>
+      </form>
+    </div>
+
+    <div class="result-box" id="resultBox">
+      <h3>📊 Analysis Result</h3>
+      <div id="analysisOutput"></div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("resumeForm");
+    const resultBox = document.getElementById("resultBox");
+    const analysisOutput = document.getElementById("analysisOutput");
+
+    function createFireworks() {
+      for (let i = 0; i < 15; i++) {
+        const dot = document.createElement("div");
+        dot.className = "firework";
+        dot.style.background = `hsl(${Math.random() * 360}, 100%, 50%)`;
+        dot.style.left = '50%';
+        dot.style.top = '50%';
+        dot.style.setProperty('--x', `${(Math.random() - 0.5) * 300}px`);
+        dot.style.setProperty('--y', `${(Math.random() - 0.5) * 300}px`);
+        document.body.appendChild(dot);
+        setTimeout(() => dot.remove(), 1000);
+      }
+    }
+
+    function getFeedback(score) {
+      if (score >= 80) {
+        return { msg: "🔥 Excellent match! You're job-ready!", emoji: "🎉👏🚀" };
+      } else if (score >= 50) {
+        return { msg: "💪 Decent match! A little polish and you're good to go!", emoji: "👍✨" };
+      } else {
+        return { msg: "📘 Keep learning! Try adding more relevant skills.", emoji: "📚🤓" };
+      }
+    }
+
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const fileInput = document.getElementById("resume");
+      const jobSelect = document.getElementById("job");
+
+      if (fileInput.files.length === 0) {
+        alert("Please select a resume file.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("resume", fileInput.files[0]);
+      formData.append("job", jobSelect.value);
+
+      try {
+        const response = await fetch("/analyze", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          resultBox.style.display = "block";
+
+          let color = "red";
+          if (data.score >= 75) color = "green";
+          else if (data.score >= 40) color = "orange";
+
+          const feedback = getFeedback(data.score);
+
+          analysisOutput.innerHTML = `
+            <p><strong>Matched Job Role:</strong> <span style="color:#4a148c">${data.matched_role}</span></p>
+            <div class="score-bar">
+              <div class="score-fill ${color}" style="width:${data.score}%">
+                ${data.score}%
+              </div>
+            </div>
+            <p><strong>Missing Skills:</strong> <span style="color:#d84315">${data.missing_skills.join(", ") || "None!"}</span></p>
+            <p style="margin-top:15px; font-size:18px; color:#2e7d32;"><strong>${feedback.msg}</strong> ${feedback.emoji}</p>
+          `;
+
+          createFireworks();
+        } else {
+          alert(data.error || "Something went wrong.");
+        }
+      } catch (error) {
+        console.error(error);
+        alert("Failed to connect to backend.");
+      }
+    });
+  </script>
+
+</body>
+</html>
