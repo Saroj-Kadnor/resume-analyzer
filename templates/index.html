@@ -180,6 +180,8 @@
       formData.append("job", jobSelect.value);
 
       try {
+        // --- THIS IS THE FIX FOR DEPLOYMENT ---
+        // We use the relative path so it works when deployed on Azure.
         const response = await fetch("/analyze", {
           method: "POST",
           body: formData
